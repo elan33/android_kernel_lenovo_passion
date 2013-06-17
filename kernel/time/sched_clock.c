@@ -67,9 +67,8 @@ static inline u64 notrace cyc_to_ns(u64 cyc, u32 mult, u32 shift)
 static unsigned long long notrace sched_clock_32(void)
 {
 	u64 epoch_ns;
-	u64 epoch_cyc;
-	u64 cyc;
-	unsigned long seq;
+	u32 epoch_cyc;
+	u32 cyc;
 
 	if (cd.suspended)
 		return cd.epoch_ns;
@@ -165,12 +164,15 @@ void __init sched_clock_register(u64 (*read)(void), int bits,
 	pr_debug("Registered %pF as sched_clock source\n", read);
 }
 
+<<<<<<< HEAD:kernel/time/sched_clock.c
 void __init setup_sched_clock(u32 (*read)(void), int bits, unsigned long rate)
 {
 	read_sched_clock_32 = read;
 	sched_clock_register(read_sched_clock_32_wrapper, bits, rate);
 }
 
+=======
+>>>>>>> 7f45ce8... ARM: sched_clock: Load cycle count after epoch stabilizes:arch/arm/kernel/sched_clock.c
 unsigned long long __read_mostly (*sched_clock_func)(void) = sched_clock_32;
 
 unsigned long long notrace sched_clock(void)
