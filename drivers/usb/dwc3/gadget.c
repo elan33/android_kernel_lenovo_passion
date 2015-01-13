@@ -1124,38 +1124,23 @@ start_trb_queuing:
 				if (last_one)
 					break;
 			}
-			dbg_queue(dep->number, &req->request, trbs_left);
 			if (last_one)
 				break;
 		} else {
-			struct dwc3_request	*req1;
-			int maxpkt_size = usb_endpoint_maxp(dep->endpoint.desc);
-
 			dma = req->request.dma;
 			length = req->request.length;
 			trbs_left--;
 
-			if (req->request.zero && length &&
-						(length % maxpkt_size == 0))
-				trbs_left--;
-
-			if (!trbs_left) {
+			if (!trbs_left)
 				last_one = 1;
-			} else if (dep->direction && (trbs_left <= 1)) {
-				req1 = next_request(&req->list);
-				if (req1->request.zero && req1->request.length
-				 && (req1->request.length % maxpkt_size == 0))
-					last_one = 1;
-			}
 
 			/* Is this the last request? */
-			if (last_req)
+			if (list_is_last(&req->list, &dep->request_list))
 				last_one = 1;
 
 			dwc3_prepare_one_trb(dep, req, dma, length,
-					last_one, false, 0, 0);
+					last_one, false, 0);
 
-			dbg_queue(dep->number, &req->request, 0);
 			if (last_one)
 				break;
 		}
