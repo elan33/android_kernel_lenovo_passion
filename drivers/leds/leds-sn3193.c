@@ -391,7 +391,6 @@ static int sn3193_write_reg(u8 addr, u8 para)
 	}else printk("%s no client\n",__func__);
     return 0;
 }
-//void sn3193_rgb_factory_test(void);
 
 static void sn3193_init(void)
 {
@@ -457,7 +456,6 @@ static void sn3193_init(void)
 	sn3193_is_init = 1;
 done:
     LEDS_DEBUG("[LED]-%s\n", __func__);
-//	sn3193_rgb_factory_test();
 }
 void sn3193_off(void)
 {
@@ -466,38 +464,6 @@ void sn3193_off(void)
     sn3193_write_reg(0x1D, 0x00);
     sn3193_write_reg(0x07, 1);	
     sn3193_write_reg(0x00, 0x01);
-}
-
-void sn3193_rgb_factory_test(void)
-{
-	LEDS_DEBUG("[LED]%s\n", __func__);
-
-    sn3193_write_reg(0x00, 0x20);
-    sn3193_write_reg(0x02, 0x01 << 5); //RGB mode
-
-    sn3193_write_reg(0x03, 0x02 << 2); //5mA
-    sn3193_write_reg(0x06, 51); //DOUT3,R
-    sn3193_write_reg(0x05, 51); //DOUT2,G
-    sn3193_write_reg(0x04, 51); //DOUT1,B
-
-    sn3193_write_reg(0x0C, 0x00);	//R
-    sn3193_write_reg(0x12, 0x04);
-    sn3193_write_reg(0x18, 0x08);  
-
-    sn3193_write_reg(0x0B, 0x30);	//G
-    sn3193_write_reg(0x11, 0x04);
-    sn3193_write_reg(0x17, 0x08);  
-
-    sn3193_write_reg(0x0A, 0x40);	//B
-    sn3193_write_reg(0x10, 0x04);
-    sn3193_write_reg(0x16, 0x08);  
-    sn3193_write_reg(0x1C, 1);
-    sn3193_write_reg(0x07, 1);	 
-
-    sn3193_write_reg(0x1C, 1);
-    sn3193_write_reg(0x01, 0x03); 
-    sn3193_write_reg(0x1D, 0x07);
-    sn3193_write_reg(0x07, 1);	 
 }
 
 
@@ -699,40 +665,6 @@ void sn3193_led_set(struct led_classdev *led_cdev,enum led_brightness value)
     schedule_work(&led_data->work);
 }
 
-/*for factory test*/
-static void sn3193_led_work_test(struct work_struct *work)
-{
-	struct sn3193_leds_priv	*led_data =
-		container_of(work, struct sn3193_leds_priv, work);
-
-if((led_data->level)==0)
-	sn3193_off();
-else
-	sn3193_rgb_factory_test();
-}
-
-/*for factory test*/
-
-void sn3193_led_set_test(struct led_classdev *led_cdev,enum led_brightness value)
-{
-
-	struct sn3193_leds_priv *led_data =
-		container_of(led_cdev, struct sn3193_leds_priv, cdev);
-	LEDS_DEBUG("[LED]%s value=%d\n", __func__,value);	
-
-    if(sn3193_i2c_cilent == NULL) {
-        printk("sn3193_i2c_cilent null\n");
-        return;
-    }
-    cancel_work_sync(&led_data->work);
-	led_data->level = value;
-        
-    if(!sn3193_is_init) {
-        sn3193_init();
-    }
-    schedule_work(&led_data->work);
-}
-
 #if 0
 static int led_hw_check(struct i2c_client *client)
 {
@@ -767,7 +699,6 @@ static int  sn3193_leds_i2c_probe(struct i2c_client *client, const struct i2c_de
 	int ret,i;
 	struct device_node *node = client->dev.of_node;
 	const char *node_name=NULL;
-	const char *test_node_name=NULL;
 
 	LEDS_DEBUG("[LED]%s,addr=0x%x\n", __func__,client->addr);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -783,18 +714,13 @@ static int  sn3193_leds_i2c_probe(struct i2c_client *client, const struct i2c_de
 			goto err;
 		}		
 
-		node_name = of_get_property(node, "lenovo,node-name", NULL);	
-		test_node_name = of_get_property(node, "lenovo,test-node-name", NULL);		
+		node_name = of_get_property(node, "lenovo,node-name", NULL);
 		//led_hw_check(sn3193_i2c_cilent);
 		
 		if(node_name != NULL) g_sn3193_leds_data[0]->cdev.name = node_name;
 	
 		ret = led_classdev_register(&client->dev, &g_sn3193_leds_data[0]->cdev);
 		if (ret) goto err;
-		if(test_node_name != NULL) g_sn3193_leds_data[1]->cdev.name = test_node_name;
-		ret = led_classdev_register(&client->dev, &g_sn3193_leds_data[1]->cdev);
-		if (ret) goto err;
-			printk("%s - %s - %s- 0x%x\n",__func__,g_sn3193_leds_data[0]->cdev.name,g_sn3193_leds_data[1]->cdev.name,(int)strlen(node_name));
 		sn3193_init();
 	}else printk("%s no node",__func__);
 	return ret;
@@ -851,21 +777,6 @@ static int __init sn3193_leds_init(void)
 	g_sn3193_leds_data[0]->cdev.blink_set = sn3193_blink_set;
 	INIT_WORK(&g_sn3193_leds_data[0]->work, sn3193_led_work);
 	g_sn3193_leds_data[0]->level = 0;
-	
-
-	g_sn3193_leds_data[1] = kzalloc(sizeof(struct sn3193_leds_priv), GFP_KERNEL);
-	if (!g_sn3193_leds_data[1]) {
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	g_sn3193_leds_data[1]->cdev.name = "test-led";
-	g_sn3193_leds_data[1]->cdev.brightness_set = sn3193_led_set_test;
-	g_sn3193_leds_data[1]->cdev.max_brightness = 0xff;
-	INIT_WORK(&g_sn3193_leds_data[1]->work, sn3193_led_work_test);
-
-	g_sn3193_leds_data[1]->level = 0;
-	
 
 	if(i2c_add_driver(&sn3193_i2c_driver))
 	{
