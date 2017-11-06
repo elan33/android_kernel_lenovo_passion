@@ -508,13 +508,11 @@ static void sn3193_led_work(struct work_struct *work)
 if((led_data->level)==0)
 	sn3193_off();
 else
-	sn3193_proc_backlight_value(led_data->level,led_data->delay_on,led_data->delay_off);
+	sn3193_proc_backlight_value(led_data->level, led_data->delay_on, led_data->delay_off);
 }
 
 void sn3193_led_set(struct led_classdev *led_cdev,enum led_brightness value)
 {
-
-
 	struct sn3193_leds_priv *led_data =
 		container_of(led_cdev, struct sn3193_leds_priv, cdev);
 	LEDS_DEBUG("[LED]%s value=%d\n", __func__,value);	
@@ -561,6 +559,43 @@ static int led_hw_check(struct i2c_client *client)
 }
 #endif
 
+static ssize_t led_blink_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct sn3193_leds_priv *led_data =
+		container_of(led_cdev, struct sn3193_leds_priv, cdev);
+
+	scnprintf(buf, PAGE_SIZE, "on=%d,off=%d\n",
+		led_data->delay_on, led_data->delay_off);
+
+	return strlen(buf);
+}
+
+static ssize_t led_blink_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct sn3193_leds_priv *led_data =
+		container_of(led_cdev, struct sn3193_leds_priv, cdev);
+	int ms_on = 0;
+	int ms_off = 0;
+
+	sscanf(buf, "%d,%d", &ms_on, &ms_off);
+
+	cancel_work_sync(&led_data->work);
+	led_data->delay_on = ms_on;
+	led_data->delay_off = ms_off;
+
+	if(!sn3193_is_init) {
+		sn3193_init();
+	}
+	schedule_work(&led_data->work);
+
+	return size;
+}
+static DEVICE_ATTR(blink, 0644, led_blink_show, led_blink_store);
+
 static int  sn3193_leds_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret,i;
@@ -587,6 +622,10 @@ static int  sn3193_leds_i2c_probe(struct i2c_client *client, const struct i2c_de
 		if(node_name != NULL) g_sn3193_leds_data[0]->cdev.name = node_name;
 	
 		ret = led_classdev_register(&client->dev, &g_sn3193_leds_data[0]->cdev);
+		if (ret)
+			goto err;
+
+		ret = device_create_file(g_sn3193_leds_data[0]->cdev.dev, &dev_attr_blink);
 		if (ret)
 			goto err;
 
