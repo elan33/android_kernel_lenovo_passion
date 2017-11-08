@@ -481,11 +481,6 @@ struct input_keymap_entry {
 #define KEY_ONEKEY_DOWM		253
 /*add by lixh10 for one key power down  2015-03-10 end*/
 
-/*lenovo-sw, wengjun1 add 20150206 for slide touch keycode begin*/
-#define KEY_SLIDE		254
-/*lenovo-sw, wengjun1 add 20150206 for slide touch keycode end*/
-
-
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
